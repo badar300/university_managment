@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>User Management</title>
+    <!-- Bootstrap CSS -->
+        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script>
+    $.noConflict();
+    jQuery(document).ready(function ($) {
+        // Use a class selector for the click event
+        $('#delete-btn').click(function () {
+            // Get the student ID from the data attribute
+            var theses_id = $(this).data('theses-id');
+            alert('Are you sure you want to delete?')
+            var csrfToken = $('[name=csrfmiddlewaretoken]').val();
+            // Make an AJAX request to update the legal status
+            $.ajax({
+                url: 'http://127.0.0.1:8000/delete-dissert/' + theses_id,
+                type: 'DELETE',
+                data: { csrfmiddlewaretoken: csrfToken,},
+                success: function (data) {
+                    // Handle success, if needed
+                    window.location.reload()
+                    console.log('Legal status updated successfully');
+                },
+                error: function (error) {
+                    console.log('Error updating legal status:', error);
+                }
+            });
+        });
+
+        $('.update-title').click(function() {
+            // Get the theses ID from the data attribute
+            var thesesId = $(this).data('theses-id');
+
+            // Set the ID in the modal for reference when saving
+            $('#updateTitleModal').data('theses-id', thesesId);
+
+            // Clear the input field in the modal
+            $('#newTitle').val('');
+
+            // Focus on the input field when the modal is shown
+            $('#updateTitleModal').on('shown.bs.modal', function () {
+                $('#newTitle').focus();
+            });
+        });
+
+        // Handle click event on the "Save Changes" button in the modal
+        $('#saveTitleBtn').click(function() {
+            // Get the theses ID from the modal data
+            var thesesId = $('#updateTitleModal').data('theses-id');
+
+            // Get the new title from the input field
+            var newTitle = $('#newTitle').val();
+
+            // Perform any validation or additional checks if needed
+            var csrfToken = $('[name=csrfmiddlewaretoken]').val();
+            // Send the updated title to the backend using AJAX
+            $.ajax({
+                url: '/update-title/' + thesesId,
+                type: 'POST',
+                data: { newTitle: newTitle, csrfmiddlewaretoken: csrfToken },
+                success: function(data) {
+                    // Handle success, update the UI if needed
+                    // For example, you can update the title in the table dynamically
+                    // $('#titleCell-' + thesesId).text(newTitle);
+
+                    // Close the modal
+                    $('#updateTitleModal').modal('hide');
+                },
+                error: function(error) {
+                    // Handle error, show an alert, etc.
+                    console.log('Error updating title:', error);
+                }
+            });
+        });
+
+    });
+</script>
+
+</head>
+
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">PORTAL</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+            {% if user.is_superuser %}
+            <li class="nav-item active">
+                <a class="nav-link" href="/dashboard">Add theses <span class="sr-only">(current)</span></a>
+            </li>
+            <li class="nav-item active" id="allstudents">
+                <a class="nav-link" href="/allstudents">All Students <span class="sr-only">(current)</span></a>
+            </li>
+            {% elif user.student %}
+            <li class="nav-item active" id="majors">
+                <a class="nav-link" href="/majors">Majors <span class="sr-only">(current)</span></a>
+            </li>
+            {% endif %}
+            <li class="nav-item active">
+                <a class="nav-link" href="/dissertations">Dissertations</a>
+            </li>
+            <!-- Add more navigation items as needed -->
+        </ul>
+    </div>
+    <ul class="navbar-nav ml-auto">
+        {% if user.is_authenticated %}
+            <li class="nav-item">
+                <a class="nav-link" href="/logout">Logout</a>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card text-black" style="border-radius: 25px;">
+                <div class="card-body p-md-5">
+                    <div class="table-responsive">
+                        {% if dissertations %}
+                        <table class="table table-bordered">
+                            <thead>
+                            <tr>
+                                <th colspan="5" style="text-align: center; font-weight: bold;">
+                                    Here Are Dissertations.
+                                </th>
+                            </tr>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Supervisor ID</th>
+                                    <th>Title</th>
+                                    <th>Institute</th>
+                                    <th>Department</th>
+                                    <th>Defense Year</th>
+                                    {% if user.is_superuser %}
+                                    <th>Delete Dissertation</th>
+                                    {% endif %}
+                                {% if user.supervisor and not user.is_superuser %}
+                                    <th>Update Title</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            {% if dissertations %}
+                            <tbody>
+                                <!-- Replace the following block with dynamic data -->
+                                {% for theses in dissertations %}
+                                    <tr>
+                                        <td>{{ theses.std_id }}</td>
+                                        <td>{{ theses.supervis_id }}</td>
+                                        <td>{{ theses.title }}</td>
+                                        <td>{{ theses.institue }}</td>
+                                        <td>{{ theses.department }}</td>
+                                        <td>{{ theses.def_year }}</td>
+                                        {% if user.is_superuser %}
+
+                                        <td>
+                                            <button class="btn btn-danger btn-sm" id="delete-btn" data-theses-id="{{ theses.id }}">Delete</button>
+                                        </td>
+                                        {% endif %}
+                                    {% if user.supervisor and not user.is_superuser %}
+
+                                        <td>
+                                            <button class="btn btn-danger btn-sm update-title" data-toggle="modal" data-target="#updateTitleModal" data-theses-id="{{ theses.id }}">Update Title</button>
+                                        </td>
+
+                                        {% endif %}
+                                    </tr>
+                                {% endfor %}
+                                <!-- End of dynamic data block -->
+                            </tbody>
+                            {% else %}
+                            <p>No Record Found</p>
+                        {% endif %}
+                        </table>
+                        {% else %}
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th colspan="5" style="text-align: center; font-weight: bold;">
+                                        These are all your Majors.
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th>Major Name</th>
+                                    <th>Diploma No</th>
+                                    <th>Graduating Sem</th>
+                                    <th>Starting Sem</th>
+                                    <th>Faculty OTM</th>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Replace the following block with dynamic data -->
+                                {% for major in majors %}
+                                    <tr>
+                                        <td>{{ major.name }}</td>
+                                        <td>{{ major.diploma_no }}</td>
+                                        <td>{{ major.graduating_sem }}</td>
+                                        <td>{{ major.starting_sem }}</td>
+                                        <td>{{ theses.faculty_otm }}</td>
+
+                                    </tr>
+                                {% endfor %}
+                                <!-- End of dynamic data block -->
+                            </tbody>
+                        </table>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Modal for updating title -->
+<div class="modal fade" id="updateTitleModal" tabindex="-1" role="dialog" aria-labelledby="updateTitleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updateTitleModalLabel">Update Title</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <label for="newTitle">New Title:</label>
+                <input type="text" class="form-control" id="newTitle" name="newTitle">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal" id="saveTitleBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+</div>
+
+<!-- Bootstrap JS and dependencies (popper.js and jQuery) -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+</body>
+
+
+</html>
